@@ -7,6 +7,7 @@
 //   --hide CAT[,CAT...]      also leave out these categories (see data/categories.tsv)
 //   --show CAT[,CAT...]      put these categories back
 //   --copies notes,placeholders,bought   keep these copy kinds (--copies none keeps none)
+//   --no-real                leave out the uncategorised items, to keep only categories and copies
 //   --out DIR                write DIR/items.json and DIR/ids.txt (default: print counts only)
 //   --icons                  also copy each kept item's icon into DIR/icons/
 import fs from 'fs';
@@ -57,7 +58,8 @@ const hide = [...new Set([...preset.hide, ...list(option('--hide'))])].filter(c 
 
 const items = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'items.json'), 'utf8'));
 const categories = parseCategories(fs.readFileSync(path.join(ROOT, 'data', 'categories.tsv'), 'utf8'));
-const kept = applyFilter(items, categories, { hide, copies });
+const real = !args.includes('--no-real');
+const kept = applyFilter(items, categories, { hide, copies, real });
 
 const byCategory = {};
 for (const item of kept)

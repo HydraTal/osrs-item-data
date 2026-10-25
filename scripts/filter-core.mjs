@@ -26,9 +26,9 @@ export const COPIES = [
 
 export const PRESETS = {
 	// Everything with a name.
-	all: { hide: [], copies: COPIES.map(([k]) => k) },
+	all: { hide: [], copies: COPIES.map(([k]) => k), real: true },
 	// What you'd keep in a main-game bank: no category, no copies. Close to the set combo-tags' item search offers.
-	real: { hide: CATEGORIES.map(([c]) => c), copies: [] },
+	real: { hide: CATEGORIES.map(([c]) => c), copies: [], real: true },
 };
 
 export function parseCategories(tsv)
@@ -73,10 +73,16 @@ export function categoryOf(item, categories)
 }
 
 /**
- * The items a filter keeps. `hide` lists categories to leave out; `copies` lists the copy kinds to keep. Unnamed ids
- * (stack-size models, unused slots) are always left out.
+ * The items a filter keeps. Three independent switches:
+ *
+ * - `real`: the uncategorised base items, what you'd keep in a bank (default on)
+ * - `hide`: categories to leave out; a categorised item shows unless its category is here
+ * - `copies`: the copy kinds to keep (notes, placeholders, bought copies). A copy follows its own switch whatever
+ *   `real` says, but still drops out with its item's category: turning `real` off and notes on lists just the notes.
+ *
+ * Unnamed ids (stack-size models, unused slots) are always left out.
  */
-export function applyFilter(items, categories, { hide = [], copies = [] } = {})
+export function applyFilter(items, categories, { hide = [], copies = [], real = true } = {})
 {
 	const hidden = new Set(hide);
 	const keptCopies = new Set(copies);
@@ -86,13 +92,17 @@ export function applyFilter(items, categories, { hide = [], copies = [] } = {})
 		{
 			return false;
 		}
-		const kind = copyKind(item);
-		if (kind && !keptCopies.has(kind))
+		const category = categoryOf(item, categories);
+		if (category && hidden.has(category))
 		{
 			return false;
 		}
-		const category = categoryOf(item, categories);
-		return !(category && hidden.has(category));
+		const kind = copyKind(item);
+		if (kind)
+		{
+			return keptCopies.has(kind);
+		}
+		return category ? true : real;
 	});
 }
 

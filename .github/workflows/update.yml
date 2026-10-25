@@ -3,8 +3,10 @@ name: update
 # This repo keeps its own item lists. Two jobs, both committing straight to main:
 #
 #   update      once a day: if abextm/osrs-cache has a cache newer than data/meta.json (it publishes one per game
-#               update), fetch, render, commit what changed, and release it as that cache's tag. A day without a game
-#               update costs one GitHub API call.
+#               update), decide whether it changes anything this repo is built from (build.mjs --check: the index
+#               files' blob ids, the item archive's CRC, the RuneLite cache library version). Same content: note the
+#               tag in meta.json, nothing else. Changed: fetch, render, commit, and release it as that cache's tag,
+#               unless no item or icon actually changed. A day without a game update costs two small requests.
 #   reclassify  when a push changes scripts/rules.mjs: re-run the rules over the items already here (no render),
 #               commit categories.tsv, and release it as <tag>.<n>, so the published lists match the published rules.
 #
@@ -42,9 +44,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 20
 
@@ -54,9 +56,25 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           TAG: ${{ inputs.tag }}
           FORCE: ${{ inputs.force && '--force' || '' }}
-        run: node scripts/build.mjs --check ${TAG:+--tag "$TAG"} $FORCE >> "$GITHUB_OUTPUT"
+        # build.mjs writes changed, record, tag and reason to $GITHUB_OUTPUT itself.
+        run: node scripts/build.mjs --check ${TAG:+--tag "$TAG"} $FORCE
 
-      - uses: actions/setup-java@v4
+      - name: Note a cache with nothing new
+        if: steps.check.outputs.record == 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.check.outputs.tag }}
+          REASON: ${{ steps.check.outputs.reason }}
+        run: |
+          node scripts/build.mjs --record --tag "$TAG"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/meta.json
+          git commit -q -m "Cache $TAG: $REASON"
+          git pull -q --rebase origin main
+          git push -q origin HEAD:main
+
+      - uses: actions/setup-java@v5
         if: steps.check.outputs.changed == 'true'
         with:
           distribution: temurin
@@ -65,9 +83,11 @@ jobs:
           cache-dependency-path: renderer/build.gradle
 
       - name: Fetch, render and package
+        id: build
         if: steps.check.outputs.changed == 'true'
         env:
           GITHUB_TOKEN: ${{ github.token }}
+        # Writes release=true|false to $GITHUB_OUTPUT: false when no item or icon changed.
         run: node scripts/build.mjs --tag "${{ steps.check.outputs.tag }}" --force --package
 
       - name: Commit, tag and release
@@ -75,16 +95,23 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.check.outputs.tag }}
+          REASON: ${{ steps.check.outputs.reason }}
+          RELEASE_IT: ${{ steps.build.outputs.release }}
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A icons data
           # Unchanged icons render byte-identical, so the commit holds only what this game update changed.
           if ! git diff --cached --quiet; then
-            git commit -q -m "Data for $TAG"
+            if [ "$RELEASE_IT" = "true" ]; then MSG="Data for $TAG"; else MSG="Rebuilt $TAG ($REASON): no item or icon changed"; fi
+            git commit -q -m "$MSG"
             # A code release may have landed while this ran; it never touches icons/ or data/, so this rebases clean.
             git pull -q --rebase origin main
             git push -q origin HEAD:main
+          fi
+          if [ "$RELEASE_IT" != "true" ]; then
+            echo "No item or icon changed; no release."
+            exit 0
           fi
           RELEASE="$TAG"
           if git ls-remote --exit-code --tags origin "refs/tags/$TAG" > /dev/null; then
@@ -99,9 +126,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 20
 

@@ -12,7 +12,10 @@
 // Usage:
 //   node scripts/build.mjs                 build from the newest cache
 //   node scripts/build.mjs --tag <tag>     build a specific abextm/osrs-cache tag
-//   node scripts/build.mjs --check         print changed=true|false (and tag=...) for CI, build nothing
+//   node scripts/build.mjs --check         decide, build nothing: changed=true|false, record=true|false, tag, reason
+//                                          (written to $GITHUB_OUTPUT in CI); record means same content, new tag
+//   node scripts/build.mjs --record        name a same-content tag in data/meta.json without rendering
+//   node scripts/build.mjs --fingerprint   print a tag's index blob ids and item archive CRC
 //   node scripts/build.mjs --package       also write the release assets
 //   node scripts/build.mjs --package-only  write the release assets for what data/ already holds
 //   node scripts/build.mjs --classify-only re-run scripts/rules.mjs over data/items.json (after a rules change)
@@ -65,13 +68,8 @@ async function get(url, headers = {})
 
 async function latestCacheTag()
 {
-	const headers = { Accept: 'application/vnd.github+json' };
-	if (process.env.GITHUB_TOKEN)
-	{
-		headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
-	}
 	// releases/latest skips pre-releases, so beta-world caches (beta-sailing-...) never land here.
-	const res = await get('https://api.github.com/repos/abextm/osrs-cache/releases/latest', headers);
+	const res = await get('https://api.github.com/repos/abextm/osrs-cache/releases/latest', githubHeaders());
 	return (await res.json()).tag_name;
 }
 
@@ -103,6 +101,129 @@ function parseTag(tag)
 {
 	const m = /^(\d{4}-\d{2}-\d{2})(?:-[a-z0-9]+)*-rev(\d+)$/.exec(tag);
 	return m ? { date: m[1], revision: Number(m[2]) } : { date: null, revision: null };
+}
+
+/*
+ * Whether a new cache changes anything this repo is built from. Weekly game updates nearly always do; a same-day
+ * re-tag (2026-09-23 vs 2026-09-23-c1) often changes only configs this repo doesn't read. Three layers, cheapest first:
+ *
+ *   - the git blob ids of the index files, from one GitHub API call: no download at all
+ *   - the item archive's CRC (configs archive 10), from 2.flatcache alone (6.5 MB): configs also hold NPCs, objects and
+ *     the rest, so a changed 2.flatcache doesn't mean changed items
+ *   - the net.runelite:cache version, which does the rendering
+ *
+ * RuneLite's own client version and jar hashes (bootstrap.json) are recorded for provenance only: RuneLite releases
+ * don't follow cache updates, so they can't say whether the items changed.
+ */
+const ITEM_ARCHIVE = 10; // ConfigType.ITEM in the configs index
+
+function githubHeaders()
+{
+	const headers = { Accept: 'application/vnd.github+json' };
+	if (process.env.GITHUB_TOKEN)
+	{
+		headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
+	}
+	return headers;
+}
+
+/** { "2": blobSha, "7": ..., ... } for a tag, from the GitHub tree API. */
+async function remoteIndexBlobs(tag)
+{
+	const tree = await (await get(`https://api.github.com/repos/abextm/osrs-cache/git/trees/${encodeURIComponent(tag)}`, githubHeaders())).json();
+	const blobs = {};
+	for (const i of INDEXES)
+	{
+		const entry = (tree.tree ?? []).find(t => t.path === `${i}.flatcache`);
+		if (!entry)
+		{
+			throw new Error(`${tag} has no ${i}.flatcache`);
+		}
+		blobs[i] = entry.sha;
+	}
+	return blobs;
+}
+
+/** The same blob ids, from a fetched cache clone. */
+function localIndexBlobs(cacheDir)
+{
+	return Object.fromEntries(INDEXES.map(i => [i, run('git', ['rev-parse', `HEAD:${i}.flatcache`], { cwd: cacheDir, capture: true }).trim()]));
+}
+
+/** The CRC of the configs index's item archive, from 2.flatcache's text. */
+function itemArchiveCrc(flatcache)
+{
+	const m = new RegExp(`^id=${ITEM_ARCHIVE}\\r?\\n(?:(?!id=)[^\\n]*\\n)*?crc=(-?\\d+)`, 'm').exec(flatcache);
+	if (!m)
+	{
+		throw new Error(`no archive ${ITEM_ARCHIVE} in 2.flatcache`);
+	}
+	return Number(m[1]);
+}
+
+async function remoteItemArchiveCrc(tag)
+{
+	const res = await get(`https://raw.githubusercontent.com/abextm/osrs-cache/${encodeURIComponent(tag)}/2.flatcache`);
+	return itemArchiveCrc(await res.text());
+}
+
+async function runeliteClient()
+{
+	const boot = await (await get('https://static.runelite.net/bootstrap.json')).json();
+	const hash = prefix => boot.artifacts.find(a => a.name.startsWith(prefix))?.hash ?? null;
+	return { version: boot.version, client: hash('client-'), injectedClient: hash('injected-client-') };
+}
+
+/**
+ * What --check decides: build (changed), note the tag without building (record: same content), or nothing.
+ * `reason` says why, for the run log.
+ */
+async function decide(meta0, tag)
+{
+	if (flag('--force'))
+	{
+		return { changed: true, reason: 'forced' };
+	}
+	const fp = meta0.fingerprint;
+	const runelite = await latestRuneLite();
+	if (fp && fp.runelite !== runelite)
+	{
+		return { changed: true, reason: `RuneLite cache library ${fp.runelite} -> ${runelite}` };
+	}
+	if (meta0.cacheTag === tag)
+	{
+		return { changed: false, reason: `data/meta.json already names ${tag}` };
+	}
+	if (!fp)
+	{
+		return { changed: true, reason: 'no fingerprint recorded for the current data' };
+	}
+	const blobs = await remoteIndexBlobs(tag);
+	const moved = INDEXES.filter(i => i !== 2 && blobs[i] !== fp.blobs[i]);
+	if (moved.length)
+	{
+		return { changed: true, reason: `indexes ${moved.join(', ')} changed` };
+	}
+	const crc = blobs[2] === fp.blobs[2] ? fp.itemsCrc : await remoteItemArchiveCrc(tag);
+	if (crc !== fp.itemsCrc)
+	{
+		return { changed: true, reason: 'item definitions changed' };
+	}
+	return { changed: false, record: true, blobs, reason: `same items, models, sprites, textures and gamevals as ${meta0.cacheTag}` };
+}
+
+/** Appends key=value lines to $GITHUB_OUTPUT in CI, and prints them either way. */
+function output(values)
+{
+	const lines = Object.entries(values).map(([k, v]) => `${k}=${v}`);
+	for (const line of lines)
+	{
+		console.log(line);
+	}
+	if (process.env.GITHUB_OUTPUT)
+	{
+		fs.appendFileSync(process.env.GITHUB_OUTPUT, lines.join('\n') + '\n');
+	}
 }
 
 function fetchCache(tag)
@@ -306,11 +427,38 @@ async function main()
 	const offline = flag('--classify-only') || flag('--package-only');
 	const tag = option('--tag') ?? (offline ? meta0.cacheTag : await latestCacheTag());
 
+	if (flag('--fingerprint'))
+	{
+		const blobs = await remoteIndexBlobs(tag);
+		console.log(JSON.stringify({ tag, blobs, itemsCrc: await remoteItemArchiveCrc(tag), runelite: await latestRuneLite() }));
+		return;
+	}
 	if (flag('--check'))
 	{
-		const changed = flag('--force') || meta0.cacheTag !== tag;
-		console.log(`changed=${changed}`);
-		console.log(`tag=${tag}`);
+		const d = await decide(meta0, tag);
+		output({ changed: d.changed, record: d.record === true, tag, reason: d.reason });
+		return;
+	}
+	if (flag('--record'))
+	{
+		// A cache whose items, models, sprites, textures and gamevals match the current data's: the data is this tag's
+		// too, so name it, without rendering or releasing anything.
+		const d = await decide(meta0, tag);
+		if (!d.record)
+		{
+			throw new Error(`${tag} can't just be recorded: ${d.reason}`);
+		}
+		const { date, revision } = parseTag(tag);
+		const meta = {
+			...meta0,
+			cacheTag: tag,
+			cacheDate: date,
+			revision,
+			builtFrom: meta0.builtFrom ?? meta0.cacheTag,
+			fingerprint: { ...meta0.fingerprint, blobs: d.blobs },
+		};
+		fs.writeFileSync(path.join(DATA, 'meta.json'), JSON.stringify(meta, null, '\t') + '\n');
+		console.log(`recorded ${tag}: ${d.reason}`);
 		return;
 	}
 	if (flag('--classify-only'))
@@ -360,7 +508,14 @@ async function main()
 		cacheTag: tag,
 		cacheDate: date,
 		revision,
+		builtFrom: tag,
 		runelite,
+		runeliteClient: await runeliteClient(),
+		fingerprint: {
+			blobs: localIndexBlobs(cacheDir),
+			itemsCrc: itemArchiveCrc(fs.readFileSync(path.join(cacheDir, '2.flatcache'), 'utf8')),
+			runelite,
+		},
 		items: summary.items,
 		icons: summary.icons,
 		iconsFailed: summary.failed,
@@ -375,13 +530,25 @@ async function main()
 	};
 	fs.writeFileSync(path.join(DATA, 'meta.json'), JSON.stringify(meta, null, '\t') + '\n');
 	const delta = changes(previousItems(), items);
-	fs.writeFileSync(path.join(DATA, 'changes.json'), JSON.stringify({ from: meta0.cacheTag ?? null, to: tag, ...delta }) + '\n');
 
 	console.log(`${summary.items} items, ${summary.icons} icons; categories ${JSON.stringify(counts)}`);
 	console.log(`icons +${delta.icons.added.length} ~${delta.icons.changed.length} -${delta.icons.removed.length}; `
 		+ `items +${delta.items.added.length} ~${delta.items.changed.length} -${delta.items.removed.length}`);
 
-	if (flag('--package'))
+	// A release is only worth cutting when an item or an icon changed. Otherwise meta.json still records what built
+	// the data, and changes.json keeps describing the last release rather than an empty one.
+	const release = [...Object.values(delta.items), ...Object.values(delta.icons)].some(list => list.length > 0);
+	if (release)
+	{
+		fs.writeFileSync(path.join(DATA, 'changes.json'), JSON.stringify({ from: meta0.cacheTag ?? null, to: tag, ...delta }) + '\n');
+	}
+	else
+	{
+		console.log('no item or icon changed: no release');
+	}
+	output({ release });
+
+	if (release && flag('--package'))
 	{
 		console.log(`release assets -> ${packageRelease(tag, meta, delta)}`);
 	}

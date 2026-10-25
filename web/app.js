@@ -5,6 +5,8 @@ const STORE = 'osrs-item-search-v2'; // v1 opened on "Real items"; a fresh key s
 const ALL_CATEGORIES = CATEGORIES.map(([c]) => c);
 // One switch for every category scripts/rules.mjs assigns (combo-tags' gen-gamemode set), listed first under Copies.
 const GAMEMODE = 'gamemode';
+// The uncategorised base items: what you'd keep in a main-game bank. Second under Copies.
+const REAL = 'real';
 const $ = id => document.getElementById(id);
 
 const [items, tsv, meta] = await Promise.all([
@@ -33,9 +35,16 @@ for (const item of items)
 }
 const copyCounts = Object.fromEntries(COPIES.map(([k]) => [k, items.filter(i => i[k] >= 0).length]));
 copyCounts[GAMEMODE] = Object.values(counts).reduce((a, b) => a + b, 0);
+copyCounts[REAL] = items.filter(i => i.name && !copyKind(i) && !categoryOf(i, categories)).length;
 
-// Opens on everything; the game-mode set and the copies are there to untick.
-let state = load() ?? { ...PRESETS.all, query: '' };
+// The two buttons: tick everything, or untick everything so a view can be built up from single boxes.
+const VIEWS = {
+	all: PRESETS.all,
+	none: { hide: [...ALL_CATEGORIES], copies: [], real: false },
+};
+
+// Opens on everything; the game-mode set, the real items and the copies are there to untick.
+let state = { ...PRESETS.all, query: '', ...load() };
 
 function load()
 {
@@ -93,11 +102,16 @@ function renderToggles()
 	}, c => counts[c]);
 	const gamemode = [GAMEMODE, 'Every item in a category above: game-mode, minigame, POH, interface, item-set, '
 		+ 'unobtainable and quest-only copies', 'gen-gamemode'];
-	toggles($('copies'), [gamemode, ...COPIES], k =>
+	const real = [REAL, 'Items in no category and not a copy: what you\'d keep in a main-game bank', 'real items'];
+	toggles($('copies'), [gamemode, real, ...COPIES], k =>
 	{
 		if (k === GAMEMODE)
 		{
 			return state.hide.length === 0 ? true : state.hide.length === ALL_CATEGORIES.length ? false : 'mixed';
+		}
+		if (k === REAL)
+		{
+			return state.real;
 		}
 		return state.copies.includes(k);
 	}, (k, on) =>
@@ -105,6 +119,10 @@ function renderToggles()
 		if (k === GAMEMODE)
 		{
 			state.hide = on ? [] : [...ALL_CATEGORIES];
+		}
+		else if (k === REAL)
+		{
+			state.real = on;
 		}
 		else
 		{
@@ -170,7 +188,7 @@ for (const button of document.querySelectorAll('[data-preset]'))
 {
 	button.addEventListener('click', () =>
 	{
-		state = { ...PRESETS[button.dataset.preset], query: state.query };
+		state = { ...VIEWS[button.dataset.preset], query: state.query };
 		update();
 	});
 }

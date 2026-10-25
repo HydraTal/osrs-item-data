@@ -1,0 +1,29 @@
+{
+	"cacheTag": "2026-10-20-rev241",
+	"cacheDate": "2026-10-20",
+	"revision": 241,
+	"runelite": "1.13.4",
+	"items": 34732,
+	"icons": 31672,
+	"iconsFailed": [],
+	"equipableFromCache": 65,
+	"categories": {
+		"QUEST": 807,
+		"BOOK": 1779,
+		"LEFTOVERS": 295,
+		"UNOBTAINABLE": 29,
+		"CONSUMABLE": 349,
+		"LAMP": 55,
+		"INTERFACE": 317,
+		"POH": 836,
+		"GE_SET": 129,
+		"GAMEMODE": 318,
+		"PVP": 328,
+		"MINIGAME": 130
+	},
+	"copies": {
+		"notes": 4729,
+		"placeholders": 10006,
+		"bought": 28
+	}
+}

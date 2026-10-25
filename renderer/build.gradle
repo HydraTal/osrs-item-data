@@ -1,0 +1,32 @@
+plugins {
+	id 'application'
+}
+
+repositories {
+	maven {
+		url = 'https://repo.runelite.net'
+	}
+	mavenCentral()
+}
+
+// The RuneLite cache library reads the flatcache and renders icons the way the client does. scripts/build.mjs passes
+// the version it records in data/meta.json, so a release names exactly what built it.
+def runeLiteVersion = project.findProperty('runeLiteVersion') ?: 'latest.release'
+
+dependencies {
+	implementation "net.runelite:cache:${runeLiteVersion}"
+}
+
+java {
+	sourceCompatibility = JavaVersion.VERSION_11
+	targetCompatibility = JavaVersion.VERSION_11
+}
+
+tasks.withType(JavaCompile).configureEach {
+	options.encoding = 'UTF-8'
+}
+
+application {
+	mainClass = 'osrsitemdata.Dump'
+	applicationDefaultJvmArgs = ['-Djava.awt.headless=true']
+}

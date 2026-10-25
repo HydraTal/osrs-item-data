@@ -1,0 +1,43 @@
+:root {
+	--bg: #f6f5f2;
+	--panel: #ffffff;
+	--text: #1d1c1a;
+	--muted: #6b675f;
+	--line: #dedad2;
+	--accent: #8a5a00;
+	color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+	:root {
+		--bg: #181715;
+		--panel: #22211e;
+		--text: #ece9e2;
+		--muted: #a29d93;
+		--line: #3a3833;
+		--accent: #e0a63a;
+	}
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 system-ui, sans-serif; }
+header { padding: 16px 20px 8px; }
+h1 { margin: 0; font-size: 20px; }
+#meta, #count, small, .detail { color: var(--muted); }
+main { display: grid; grid-template-columns: 260px 1fr; gap: 16px; padding: 8px 20px 20px; }
+aside { display: flex; flex-direction: column; gap: 12px; }
+fieldset { margin: 0; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); }
+legend { color: var(--muted); padding: 0 4px; }
+fieldset label { display: flex; align-items: center; gap: 6px; padding: 2px 0; cursor: pointer; }
+fieldset small { margin-left: auto; }
+.presets { display: flex; gap: 8px; }
+button { flex: 1; padding: 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--text); cursor: pointer; }
+button:hover { border-color: var(--accent); }
+#q { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--text); font-size: 15px; }
+#results { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 4px; }
+#results li { display: grid; grid-template-columns: 36px 1fr auto; grid-template-rows: auto auto; column-gap: 8px; align-items: center; padding: 4px 8px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; }
+#results img { grid-row: span 2; image-rendering: pixelated; }
+.name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.detail { grid-column: 2 / 4; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tag { font-size: 11px; color: var(--accent); }
+@media (max-width: 700px) {
+	main { grid-template-columns: 1fr; padding: 8px 16px 16px; }
+}

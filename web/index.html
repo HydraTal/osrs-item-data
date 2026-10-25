@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OSRS item search</title>
+<link rel="stylesheet" href="/web/style.css">
+</head>
+<body>
+<header>
+	<h1>OSRS item search</h1>
+	<p id="meta">Loading…</p>
+</header>
+<main>
+	<aside>
+		<div class="presets">
+			<button type="button" data-preset="all">All items</button>
+			<button type="button" data-preset="real">Real items</button>
+		</div>
+		<fieldset>
+			<legend>Categories</legend>
+			<div id="categories"></div>
+		</fieldset>
+		<fieldset>
+			<legend>Copies</legend>
+			<div id="copies"></div>
+		</fieldset>
+	</aside>
+	<section>
+		<input id="q" type="search" placeholder="Name, #INTERNAL_NAME, or id" autocomplete="off" autofocus>
+		<p id="count"></p>
+		<ul id="results"></ul>
+	</section>
+</main>
+<script type="module" src="/web/app.js"></script>
+</body>
+</html>

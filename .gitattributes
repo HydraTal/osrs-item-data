@@ -1,0 +1,6 @@
+# Data is generated on Linux (CI) and Windows alike; pin it so both write the same bytes.
+* text=auto eol=lf
+*.png binary
+*.zip binary
+*.jar binary
+*.bat text eol=crlf

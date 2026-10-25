@@ -1,0 +1,132 @@
+name: update
+
+# This repo keeps its own item lists. Two jobs, both committing straight to main:
+#
+#   update      once a day: if abextm/osrs-cache has a cache newer than data/meta.json (it publishes one per game
+#               update), fetch, render, commit what changed, and release it as that cache's tag. A day without a game
+#               update costs one GitHub API call.
+#   reclassify  when a push changes scripts/rules.mjs: re-run the rules over the items already here (no render),
+#               commit categories.tsv, and release it as <tag>.<n>, so the published lists match the published rules.
+#
+# Code arrives from a private working repo as one squashed commit per change (scripts/release-code.mjs), which leaves
+# icons/ and data/ exactly as these jobs made them.
+
+on:
+  schedule:
+    - cron: '17 13 * * *'
+  push:
+    branches: [main]
+    paths: [scripts/rules.mjs]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: abextm/osrs-cache tag to build (default the latest release)
+        type: string
+        default: ''
+      force:
+        description: Rebuild even if data/meta.json already names this tag
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update
+  cancel-in-progress: false
+
+jobs:
+  update:
+    # The private working repo carries this file too; only the public repo builds.
+    if: github.repository == 'HydraTal/osrs-item-data' && github.event_name != 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Check for a new cache
+        id: check
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+          FORCE: ${{ inputs.force && '--force' || '' }}
+        run: node scripts/build.mjs --check ${TAG:+--tag "$TAG"} $FORCE >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-java@v4
+        if: steps.check.outputs.changed == 'true'
+        with:
+          distribution: temurin
+          java-version: 11
+          cache: gradle
+          cache-dependency-path: renderer/build.gradle
+
+      - name: Fetch, render and package
+        if: steps.check.outputs.changed == 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/build.mjs --tag "${{ steps.check.outputs.tag }}" --force --package
+
+      - name: Commit, tag and release
+        if: steps.check.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.check.outputs.tag }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A icons data
+          # Unchanged icons render byte-identical, so the commit holds only what this game update changed.
+          if ! git diff --cached --quiet; then
+            git commit -q -m "Data for $TAG"
+            # A code release may have landed while this ran; it never touches icons/ or data/, so this rebases clean.
+            git pull -q --rebase origin main
+            git push -q origin HEAD:main
+          fi
+          RELEASE="$TAG"
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" > /dev/null; then
+            RELEASE="$TAG.$GITHUB_RUN_NUMBER"   # a forced rebuild of a tag already released
+          fi
+          git tag "$RELEASE"
+          git push -q origin "refs/tags/$RELEASE"
+          gh release create "$RELEASE" .work/release/"$TAG"/* --title "$RELEASE" --notes-file ".work/release/$TAG.md"
+
+  reclassify:
+    if: github.repository == 'HydraTal/osrs-item-data' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Classify, commit, tag and release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node scripts/build.mjs --classify-only
+          git add data/categories.tsv data/meta.json
+          if git diff --cached --quiet; then
+            echo "The new rules put every item where it already was; nothing to release."
+            exit 0
+          fi
+          TAG=$(node -p "require('./data/meta.json').cacheTag")
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -q -m "Categories for $TAG under the new rules"
+          git pull -q --rebase origin main
+          git push -q origin HEAD:main
+          node scripts/build.mjs --package-only
+          # Only the categories moved: no icon changed, so no delta zip, and notes that say so.
+          rm -f ".work/release/$TAG/icons-changed.zip"
+          printf '%s\n\n%s\n' "Categories updated by a change to scripts/rules.mjs; items and icons are the $TAG build." \
+            "See data/categories.tsv. \`icons.zip\` has every icon." > ".work/release/$TAG.md"
+          RELEASE="$TAG.$GITHUB_RUN_NUMBER"
+          git tag "$RELEASE"
+          git push -q origin "refs/tags/$RELEASE"
+          gh release create "$RELEASE" .work/release/"$TAG"/* --title "$RELEASE" --notes-file ".work/release/$TAG.md"

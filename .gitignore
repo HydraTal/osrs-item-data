@@ -1,0 +1,9 @@
+# The fetched cache and release staging (scripts/build.mjs)
+.work/
+
+# Renderer build output
+renderer/build/
+renderer/.gradle/
+
+# scripts/filter.mjs output, if written inside the clone
+subset/

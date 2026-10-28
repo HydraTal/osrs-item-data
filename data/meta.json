@@ -1,8 +1,8 @@
 {
-	"cacheTag": "2026-10-20-rev241",
-	"cacheDate": "2026-10-20",
+	"cacheTag": "2026-10-28-rev241",
+	"cacheDate": "2026-10-28",
 	"revision": 241,
-	"builtFrom": "2026-10-20-rev241",
+	"builtFrom": "2026-10-28-rev241",
 	"runelite": "1.13.4",
 	"runeliteClient": {
 		"version": "1.13.4",
@@ -11,21 +11,21 @@
 	},
 	"fingerprint": {
 		"blobs": {
-			"2": "7526a31b341bcbc99e93a7f366a324da36b73993",
-			"7": "24036838d43cd1f8709164aadd20a81415e9cdba",
-			"8": "4c7f9c7776181c773ab38fb89bf03b2af6259cdf",
+			"2": "7159fb120c4413bdb3cd6c152482e689278e7b76",
+			"7": "4e0f7764e78f82d8648d81a97365c800bd1bd643",
+			"8": "53cc43356b5b3408d3aca7a4f4110736a1cf27f6",
 			"9": "7f086040e8766e87e4b84ded5b9db309bec081d7",
-			"24": "d432238f54256c51bf765874c4a9b4887ebd437d"
+			"24": "4ec9da9ad5da4b8d1ce2beb0e0b647c29610f73e"
 		},
-		"itemsCrc": 1576566228,
+		"itemsCrc": 1688005512,
 		"runelite": "1.13.4"
 	},
-	"items": 34732,
-	"icons": 31672,
+	"items": 34748,
+	"icons": 31688,
 	"iconsFailed": [],
-	"equipableFromCache": 65,
+	"equipableFromCache": 81,
 	"categories": {
-		"QUEST": 807,
+		"QUEST": 811,
 		"BOOK": 1779,
 		"LEFTOVERS": 295,
 		"UNOBTAINABLE": 29,
@@ -40,7 +40,7 @@
 	},
 	"copies": {
 		"notes": 4729,
-		"placeholders": 10006,
+		"placeholders": 10014,
 		"bought": 28
 	}
 }

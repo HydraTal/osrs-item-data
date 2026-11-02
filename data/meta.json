@@ -3,11 +3,11 @@
 	"cacheDate": "2026-10-28",
 	"revision": 241,
 	"builtFrom": "2026-10-28-rev241",
-	"runelite": "1.13.4",
+	"runelite": "1.13.5",
 	"runeliteClient": {
-		"version": "1.13.4",
-		"client": "688ba63a7c89848c2663f3cd0b59fef42b4814b53213c6d989d4919624e95adf",
-		"injectedClient": "3b7799e654cf7fb45c4fee747bd9ba510d51b43184be1b8f56577d778f3a48b8"
+		"version": "1.13.5",
+		"client": "8681a4a41859995f2bcbeca82104cc41b017a690d6e77d31efc3dea0f3a3f569",
+		"injectedClient": "ae478cb9064c51d98dd3ce1d659f16e7ac35279eaf44f44edabb0ffef6699101"
 	},
 	"fingerprint": {
 		"blobs": {
@@ -18,12 +18,12 @@
 			"24": "4ec9da9ad5da4b8d1ce2beb0e0b647c29610f73e"
 		},
 		"itemsCrc": 1688005512,
-		"runelite": "1.13.4"
+		"runelite": "1.13.5"
 	},
 	"items": 34748,
 	"icons": 31688,
 	"iconsFailed": [],
-	"equipableFromCache": 81,
+	"equipableFromCache": 1,
 	"categories": {
 		"QUEST": 811,
 		"BOOK": 1779,

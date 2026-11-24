@@ -3,11 +3,11 @@
 	"cacheDate": "2026-11-18",
 	"revision": 242,
 	"builtFrom": "2026-11-18-c1-rev242",
-	"runelite": "1.13.7",
+	"runelite": "1.13.8",
 	"runeliteClient": {
-		"version": "1.13.7",
-		"client": "1abfe7ba42e200b1e609979c31d2c4cab6ea2f0fac901288223c517aa19074bc",
-		"injectedClient": "0e1abd7bc95b6e7d8906d7b11a1daaeb58220989646bc3661524a2a159769e9c"
+		"version": "1.13.8",
+		"client": "367f23015ca1f18ce21bb6abd89cabd0b0fe732a82e5df82ca41c303968e293d",
+		"injectedClient": "b23bad899e819bfb26a7a45ef3ea6171f251fbb1b06e15947e3b5ee0d16f945e"
 	},
 	"fingerprint": {
 		"blobs": {
@@ -18,7 +18,7 @@
 			"24": "35fd4b7d28b8c83d521fb81c897f73e19036beae"
 		},
 		"itemsCrc": -1194300160,
-		"runelite": "1.13.7"
+		"runelite": "1.13.8"
 	},
 	"items": 35027,
 	"icons": 31956,

@@ -1,8 +1,8 @@
 {
-	"cacheTag": "2026-11-18-c1-rev242",
-	"cacheDate": "2026-11-18",
-	"revision": 242,
-	"builtFrom": "2026-11-18-c1-rev242",
+	"cacheTag": "2026-11-25-rev243",
+	"cacheDate": "2026-11-25",
+	"revision": 243,
+	"builtFrom": "2026-11-25-rev243",
 	"runelite": "1.13.8",
 	"runeliteClient": {
 		"version": "1.13.8",
@@ -11,36 +11,36 @@
 	},
 	"fingerprint": {
 		"blobs": {
-			"2": "dd8fc60e8800633f4beb7f9a25aa8f8147038ac1",
-			"7": "2b76d8d036fc9582000982e2bf2251ae25113444",
-			"8": "da48b67daa2007c56a7d16fb484348b42d061255",
+			"2": "5eddbc54d91daab65e5521ed124f5cece0ea88c7",
+			"7": "a42558fd8f1ea4d1f973c6c25fe06c43cd192564",
+			"8": "93c5f4971e454d5c50ead108dfab58c3fe5d9eb4",
 			"9": "64c0d92ec76d409003949fd36ef20cfc1e9ae5df",
-			"24": "35fd4b7d28b8c83d521fb81c897f73e19036beae"
+			"24": "bc4b0668d8b3812687f0c0376bd88b5912a41a42"
 		},
-		"itemsCrc": -1194300160,
+		"itemsCrc": 502460901,
 		"runelite": "1.13.8"
 	},
-	"items": 35027,
-	"icons": 31956,
+	"items": 35077,
+	"icons": 32002,
 	"iconsFailed": [],
-	"equipableFromCache": 261,
+	"equipableFromCache": 307,
 	"categories": {
 		"QUEST": 819,
-		"BOOK": 1791,
+		"BOOK": 1803,
 		"LEFTOVERS": 295,
-		"UNOBTAINABLE": 29,
+		"UNOBTAINABLE": 30,
 		"CONSUMABLE": 351,
-		"LAMP": 64,
+		"LAMP": 65,
 		"INTERFACE": 319,
 		"POH": 836,
 		"GE_SET": 129,
 		"GAMEMODE": 318,
-		"PVP": 328,
+		"PVP": 329,
 		"MINIGAME": 130
 	},
 	"copies": {
-		"notes": 4734,
-		"placeholders": 10133,
+		"notes": 4735,
+		"placeholders": 10147,
 		"bought": 28
 	}
 }
